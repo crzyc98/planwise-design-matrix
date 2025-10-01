@@ -1,0 +1,139 @@
+# PlanWise Design Matrix - Core Dependencies
+# Version: 1.0
+# Updated: September 2025
+
+# ===== CORE FRAMEWORK =====
+# Web framework and API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# ===== DATABASE & STORAGE =====
+# DuckDB for analytics database (as specified in PRD)
+duckdb>=0.9.0
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# File handling and storage
+aiofiles>=23.2.0
+
+# ===== DOCUMENT PROCESSING =====
+# PDF processing and OCR
+PyMuPDF>=1.23.0  # fitz for PDF processing
+pytesseract>=0.3.10  # OCR capabilities
+Pillow>=10.1.0  # Image processing
+python-docx>=1.1.0  # Word document processing
+
+# ===== AI/ML & NLP =====
+# Core ML and NLP libraries
+transformers>=4.36.0
+torch>=2.1.0
+spacy>=3.7.0
+nltk>=3.8.1
+
+# Document intelligence and extraction
+pdfplumber>=0.10.0
+tabula-py>=2.8.0  # Table extraction from PDFs
+pandas>=2.1.0  # Data manipulation
+
+# ===== STATISTICAL ANALYSIS =====
+# Statistical computing for peer benchmarking
+numpy>=1.25.0
+scipy>=1.11.0
+scikit-learn>=1.3.0
+statsmodels>=0.14.0
+
+# Data visualization for deliverables
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# ===== DELIVERABLE GENERATION =====
+# PowerPoint generation
+python-pptx>=0.6.22
+openpyxl>=3.1.0  # Excel support for data exports
+
+# Template engines
+jinja2>=3.1.0
+
+# ===== UI & DASHBOARD =====
+# Streamlit for interactive dashboard
+streamlit>=1.29.0
+plotly>=5.18.0  # Interactive charts for dashboard
+
+# ===== SECURITY & AUTHENTICATION =====
+# Security and encryption
+cryptography>=41.0.0
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+
+# ===== DATA VALIDATION & SERIALIZATION =====
+# YAML processing (for PlanWise Navigator integration)
+PyYAML>=6.0.1
+ruamel.yaml>=0.18.0
+
+# JSON schema validation
+jsonschema>=4.20.0
+
+# ===== TESTING & QUALITY =====
+# Testing framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+httpx>=0.25.0  # For testing FastAPI
+
+# Code quality
+black>=23.11.0
+isort>=5.12.0
+flake8>=6.1.0
+mypy>=1.7.0
+
+# ===== MONITORING & LOGGING =====
+# Structured logging and monitoring
+structlog>=23.2.0
+prometheus-client>=0.19.0
+
+# ===== ASYNC & CONCURRENCY =====
+# Async support (asyncio is built into Python 3.7+)
+aiohttp>=3.9.0
+
+# Task queue for background processing
+celery>=5.3.0
+redis>=5.0.0
+
+# ===== CONFIGURATION & ENVIRONMENT =====
+# Environment and configuration
+python-dotenv>=1.0.0
+click>=8.1.0  # CLI support
+
+# ===== UTILITIES =====
+# Date/time handling
+python-dateutil>=2.8.2
+
+# HTTP client for integrations
+requests>=2.31.0
+
+# Progress bars and utilities
+tqdm>=4.66.0
+
+# ===== DEVELOPMENT DEPENDENCIES =====
+# Development and debugging (optional)
+# jupyterlab>=4.0.0  # For data exploration
+# ipython>=8.17.0
+
+# ===== VERSION CONSTRAINTS =====
+# Python version requirement
+# python>=3.9,<4.0
+
+# ===== PRODUCTION DEPENDENCIES =====
+# Production server and deployment
+gunicorn>=21.2.0
+python-json-logger>=2.0.7
+
+# Health checks and monitoring
+psutil>=5.9.6
+
+# ===== COMPLIANCE & AUDIT =====
+# For audit trail and compliance requirements
+# Note: Audit trails will be implemented using structlog and custom audit middleware

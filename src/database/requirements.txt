@@ -1,0 +1,13 @@
+# PlanWise Design Matrix - Database Requirements
+# Week 1 MVP Dependencies
+
+# Database
+duckdb>=0.9.0
+
+# Data Processing
+pandas>=2.0.0
+openpyxl>=3.1.0  # For Excel file handling
+
+# Optional: For future data visualization
+# numpy>=1.24.0
+# matplotlib>=3.7.0
