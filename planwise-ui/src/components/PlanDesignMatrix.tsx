@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { EditFieldModal } from './EditFieldModal'
 
 interface ExtractedField {
   field_name: string
@@ -13,7 +15,17 @@ interface Props {
   clientName?: string
 }
 
+interface FieldUpdate {
+  new_value: string
+  reason: string
+  notes?: string
+  updated_by: string
+}
+
 export default function PlanDesignMatrix({ clientId, clientName }: Props) {
+  const [editingField, setEditingField] = useState<ExtractedField | null>(null)
+  const queryClient = useQueryClient()
+
   const { data: extractions, isLoading } = useQuery<ExtractedField[]>({
     queryKey: ['extractions', clientId],
     queryFn: async () => {
@@ -23,6 +35,33 @@ export default function PlanDesignMatrix({ clientId, clientName }: Props) {
     },
     enabled: !!clientId,
   })
+
+  const updateFieldMutation = useMutation({
+    mutationFn: async ({ fieldName, update }: { fieldName: string; update: FieldUpdate }) => {
+      const response = await fetch(
+        `http://localhost:8000/api/v1/clients/${clientId}/fields/${fieldName}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(update),
+        }
+      )
+      if (!response.ok) throw new Error('Failed to update field')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['extractions', clientId] })
+      queryClient.invalidateQueries({ queryKey: ['client', clientId] })
+    },
+  })
+
+  const handleSaveField = async (update: FieldUpdate) => {
+    if (!editingField) return
+    await updateFieldMutation.mutateAsync({
+      fieldName: editingField.field_name,
+      update,
+    })
+  }
 
   const getStatusBadge = (status: string) => {
     if (status === 'verified') {
@@ -126,11 +165,12 @@ export default function PlanDesignMatrix({ clientId, clientName }: Props) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
                       {getStatusBadge(field.status)}
-                      {field.status === 'review' && (
-                        <button className="text-xs text-primary-blue hover:underline font-medium">
-                          Review
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setEditingField(field)}
+                        className="text-xs text-primary-blue hover:underline font-medium"
+                      >
+                        {field.status === 'review' ? 'Review' : 'Edit'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -157,6 +197,18 @@ export default function PlanDesignMatrix({ clientId, clientName }: Props) {
             Export Data
           </button>
         </div>
+      )}
+
+      {/* Edit Field Modal */}
+      {editingField && (
+        <EditFieldModal
+          open={!!editingField}
+          onClose={() => setEditingField(null)}
+          clientId={clientId}
+          fieldName={editingField.field_name}
+          currentValue={editingField.value}
+          onSave={handleSaveField}
+        />
       )}
     </div>
   )

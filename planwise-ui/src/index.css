@@ -63,6 +63,7 @@ body {
 .items-center { align-items: center; }
 .items-start { align-items: flex-start; }
 .justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
 .space-x-2 > * + * { margin-left: 0.5rem; }
 .space-x-3 > * + * { margin-left: 0.75rem; }
 .space-x-6 > * + * { margin-left: 1.5rem; }

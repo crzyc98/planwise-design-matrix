@@ -210,8 +210,7 @@ def get_peer_comparison(client_id: str):
                 COUNT(*) as cohort_size,
                 AVG(match_effective_rate) as avg_match_rate,
                 MEDIAN(match_effective_rate) as median_match_rate,
-                AVG(auto_enrollment_rate) as avg_ae_rate,
-                AVG(participation_rate) as avg_participation_rate
+                AVG(auto_enrollment_rate) as avg_ae_rate
             FROM plan_designs
             WHERE industry = ? AND client_id != ?
         """, [industry, client_id]).fetchone()
@@ -231,11 +230,6 @@ def get_peer_comparison(client_id: str):
                     "your_value": client_dict.get("auto_enrollment_rate", 0),
                     "peer_average": peer_stats[3] if peer_stats[3] else 0,
                     "quartile_label": "Above Average"
-                },
-                "participation_rate": {
-                    "your_value": client_dict.get("participation_rate", 0),
-                    "peer_average": peer_stats[4] if peer_stats[4] else 0,
-                    "quartile_label": "Excellent"
                 }
             }
         }
@@ -673,6 +667,353 @@ def get_distributions(
             "nationalAverage": national_average,
             "clientValue": client_value,
             "cohortSize": len(cohort_data) if cohort_data else 260
+        }
+
+    finally:
+        conn.close()
+
+# ========================================
+# E04 Plan Data Maintenance & Editing API
+# ========================================
+
+# Field name mapping: Display Name → Database Column
+FIELD_NAME_MAP = {
+    'Eligibility': 'eligibility',
+    'Employer Match': 'match_formula',
+    'Match Effective Rate': 'match_effective_rate',
+    'Non-Elective Contribution': 'nonelective_formula',
+    'Vesting Schedule': 'vesting_schedule',
+    'Auto-Enrollment': 'auto_enrollment_enabled',
+    'Auto-Enrollment Rate': 'auto_enrollment_rate',
+    'Auto-Escalation': 'auto_escalation_enabled',
+    'Auto-Escalation Cap': 'auto_escalation_cap',
+}
+
+def map_field_name(field_name: str) -> str:
+    """Map display field name to database column name"""
+    # If it's already a DB column name, return as-is
+    if field_name in ['eligibility', 'match_formula', 'match_effective_rate',
+                      'nonelective_formula', 'vesting_schedule', 'auto_enrollment_enabled',
+                      'auto_enrollment_rate', 'auto_escalation_enabled', 'auto_escalation_cap']:
+        return field_name
+    # Otherwise map from display name
+    return FIELD_NAME_MAP.get(field_name, field_name)
+
+class FieldUpdate(BaseModel):
+    new_value: str
+    reason: str
+    notes: Optional[str] = None
+    updated_by: str
+
+class BulkUpdate(BaseModel):
+    updates: List[Dict[str, Any]]
+    notes: Optional[str] = None
+    updated_by: str
+
+class AuditLogEntry(BaseModel):
+    id: str
+    timestamp: str
+    old_value: Optional[str]
+    new_value: str
+    updated_by: str
+    reason: str
+    notes: Optional[str]
+
+def validate_field_value(field_name: str, value: str) -> tuple[bool, Optional[str]]:
+    """Validate field value against validation rules"""
+    conn = duckdb.connect(str(DB_PATH), read_only=True)
+
+    try:
+        rule = conn.execute(
+            "SELECT * FROM field_validation_rules WHERE field_name = ?",
+            [field_name]
+        ).fetchone()
+
+        if not rule:
+            return True, None  # No rule = no validation
+
+        columns = [desc[0] for desc in conn.description]
+        rule_dict = dict(zip(columns, rule))
+
+        # Type validation
+        data_type = rule_dict.get("data_type")
+
+        if data_type in ("decimal", "integer"):
+            try:
+                num_value = float(value)
+                min_val = rule_dict.get("min_value")
+                max_val = rule_dict.get("max_value")
+
+                if min_val is not None and num_value < min_val:
+                    return False, f"{field_name} must be at least {min_val}"
+                if max_val is not None and num_value > max_val:
+                    return False, f"{field_name} must not exceed {max_val}"
+            except ValueError:
+                return False, f"{field_name} must be a number"
+
+        elif data_type == "enum":
+            allowed = rule_dict.get("allowed_values", [])
+            if allowed and value not in allowed:
+                return False, f"{field_name} must be one of: {', '.join(allowed)}"
+
+        return True, None
+
+    finally:
+        conn.close()
+
+@app.patch("/api/v1/clients/{client_id}/fields/{field_name}")
+async def update_field(client_id: str, field_name: str, update: FieldUpdate):
+    """Update a single field with validation and audit logging"""
+    import uuid
+    from datetime import datetime
+
+    # Map display name to DB column name
+    db_field_name = map_field_name(field_name)
+
+    # Validate the new value
+    is_valid, error_msg = validate_field_value(db_field_name, update.new_value)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail={
+            "error": "validation_error",
+            "message": error_msg,
+            "field": field_name,
+            "provided_value": update.new_value
+        })
+
+    conn = duckdb.connect(str(DB_PATH))
+
+    try:
+        # Get old value
+        old_value_row = conn.execute(
+            f"SELECT {db_field_name} FROM plan_designs WHERE client_id = ?",
+            [client_id]
+        ).fetchone()
+
+        if not old_value_row:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        old_value = str(old_value_row[0]) if old_value_row[0] is not None else None
+
+        # Update the field
+        conn.execute(
+            f"""
+            UPDATE plan_designs
+            SET {db_field_name} = ?,
+                updated_at = CURRENT_TIMESTAMP,
+                updated_by = ?
+            WHERE client_id = ?
+            """,
+            [update.new_value, update.updated_by, client_id]
+        )
+
+        # Create audit log entry
+        audit_id = f"audit-{uuid.uuid4()}"
+        conn.execute("""
+            INSERT INTO audit_log
+            (id, client_id, field_name, old_value, new_value, change_type, reason, notes, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'update', ?, ?, ?, CURRENT_TIMESTAMP)
+        """, [audit_id, client_id, db_field_name, old_value, update.new_value, update.reason, update.notes, update.updated_by])
+
+        return {
+            "client_id": client_id,
+            "field_name": field_name,
+            "old_value": old_value,
+            "new_value": update.new_value,
+            "updated_at": datetime.now().isoformat(),
+            "updated_by": update.updated_by,
+            "audit_log_id": audit_id
+        }
+
+    finally:
+        conn.close()
+
+@app.put("/api/v1/clients/{client_id}")
+async def bulk_update_fields(client_id: str, updates: BulkUpdate):
+    """Update multiple fields in single transaction"""
+    import uuid
+    from datetime import datetime
+
+    conn = duckdb.connect(str(DB_PATH))
+
+    try:
+        # Verify client exists
+        client = conn.execute(
+            "SELECT client_id FROM plan_designs WHERE client_id = ?",
+            [client_id]
+        ).fetchone()
+
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        changes = []
+        audit_ids = []
+
+        # Process each update
+        for update_item in updates.updates:
+            field_name = update_item["field_name"]
+            new_value = update_item["new_value"]
+            reason = update_item.get("reason", "bulk_update")
+
+            # Validate
+            is_valid, error_msg = validate_field_value(field_name, str(new_value))
+            if not is_valid:
+                raise HTTPException(status_code=400, detail={
+                    "error": "validation_error",
+                    "message": error_msg,
+                    "field": field_name
+                })
+
+            # Get old value
+            old_value = conn.execute(
+                f"SELECT {field_name} FROM plan_designs WHERE client_id = ?",
+                [client_id]
+            ).fetchone()[0]
+
+            # Update field
+            conn.execute(
+                f"UPDATE plan_designs SET {field_name} = ? WHERE client_id = ?",
+                [new_value, client_id]
+            )
+
+            # Create audit log
+            audit_id = f"audit-{uuid.uuid4()}"
+            conn.execute("""
+                INSERT INTO audit_log
+                (id, client_id, field_name, old_value, new_value, change_type, reason, notes, updated_by)
+                VALUES (?, ?, ?, ?, ?, 'bulk_update', ?, ?, ?)
+            """, [audit_id, client_id, field_name, str(old_value), str(new_value), reason, updates.notes, updates.updated_by])
+
+            changes.append({
+                "field_name": field_name,
+                "old_value": str(old_value) if old_value else None,
+                "new_value": str(new_value),
+                "status": "success"
+            })
+            audit_ids.append(audit_id)
+
+        # Update metadata
+        conn.execute("""
+            UPDATE plan_designs
+            SET updated_at = CURRENT_TIMESTAMP,
+                updated_by = ?
+            WHERE client_id = ?
+        """, [updates.updated_by, client_id])
+
+        return {
+            "client_id": client_id,
+            "updates_applied": len(changes),
+            "changes": changes,
+            "audit_log_ids": audit_ids
+        }
+
+    finally:
+        conn.close()
+
+@app.get("/api/v1/clients/{client_id}/fields/{field_name}/history")
+async def get_field_history(client_id: str, field_name: str, limit: int = 20):
+    """Get audit log for a specific field"""
+    # Map display name to DB column name
+    db_field_name = map_field_name(field_name)
+
+    conn = get_db()
+
+    try:
+        # Get current value
+        current = conn.execute(
+            f"SELECT {db_field_name} FROM plan_designs WHERE client_id = ?",
+            [client_id]
+        ).fetchone()
+
+        if not current:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        # Get change history
+        history = conn.execute("""
+            SELECT
+                id,
+                updated_at,
+                old_value,
+                new_value,
+                updated_by,
+                reason,
+                notes,
+                confidence_score
+            FROM audit_log
+            WHERE client_id = ? AND field_name = ?
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """, [client_id, db_field_name, limit]).fetchall()
+
+        changes = []
+        for row in history:
+            changes.append({
+                "audit_id": row[0],
+                "timestamp": row[1].isoformat() if row[1] else None,
+                "old_value": row[2],
+                "new_value": row[3],
+                "updated_by": row[4],
+                "reason": row[5],
+                "notes": row[6],
+                "confidence_score": float(row[7]) if row[7] else None
+            })
+
+        return {
+            "client_id": client_id,
+            "field_name": field_name,
+            "current_value": str(current[0]) if current[0] else None,
+            "changes": changes
+        }
+
+    finally:
+        conn.close()
+
+@app.post("/api/v1/export/excel")
+async def export_to_excel(client_ids: Optional[List[str]] = None, include_audit_trail: bool = False):
+    """Export database to Excel file"""
+    import pandas as pd
+    from datetime import datetime
+    import io
+    import base64
+
+    conn = get_db()
+
+    try:
+        # Build query
+        if client_ids:
+            placeholders = ','.join(['?' for _ in client_ids])
+            query = f"SELECT * FROM plan_designs WHERE client_id IN ({placeholders})"
+            df = pd.DataFrame(conn.execute(query, client_ids).fetchall())
+        else:
+            df = pd.DataFrame(conn.execute("SELECT * FROM plan_designs").fetchall())
+
+        # Get column names
+        columns = [desc[0] for desc in conn.description]
+        df.columns = columns
+
+        # Create Excel file in memory
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Plan Data', index=False)
+
+            if include_audit_trail:
+                audit_df = pd.DataFrame(
+                    conn.execute("SELECT * FROM audit_log ORDER BY updated_at DESC").fetchall()
+                )
+                audit_columns = [desc[0] for desc in conn.description]
+                audit_df.columns = audit_columns
+                audit_df.to_excel(writer, sheet_name='Audit Trail', index=False)
+
+        output.seek(0)
+        excel_data = base64.b64encode(output.read()).decode()
+
+        timestamp = datetime.now().strftime("%Y-%m-%d")
+        file_name = f"planwise_export_{timestamp}.xlsx"
+
+        return {
+            "export_id": f"export-{timestamp}",
+            "file_name": file_name,
+            "record_count": len(df),
+            "excel_base64": excel_data
         }
 
     finally:
