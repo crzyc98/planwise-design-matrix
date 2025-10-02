@@ -13,7 +13,7 @@ The PlanWise Design Matrix is the data foundation and analytical engine for reti
 ### Main Dashboard
 The primary interface for viewing and analyzing individual retirement plan designs with extracted data, peer benchmarking, and automated recommendations.
 
-![Main Dashboard](docs/UI/Screenshot%202025-09-29%20at%202.46.28%20PM.png)
+![Main Dashboard](docs/UI/Screenshot%202025-09-29%20at%202.46.28%E2%80%AFPM.png)
 
 **Features shown:**
 - Document upload panel with AI extraction status
@@ -25,7 +25,7 @@ The primary interface for viewing and analyzing individual retirement plan desig
 ### Peer Analysis - Overview Tab
 Consulting-grade peer benchmarking assessment with traffic light indicators showing how the client compares to their peer cohort.
 
-![Peer Benchmarking Assessment](docs/UI/Screenshot%202025-09-30%20at%209.32.39%20AM.png)
+![Peer Benchmarking Assessment](docs/UI/Screenshot%202025-09-30%20at%209.32.39%E2%80%AFAM.png)
 
 **Features shown:**
 - Five-lever comparison framework (Eligibility, Auto-Enrollment, Auto-Escalation, Employer Contribution, Vesting)
@@ -36,7 +36,7 @@ Consulting-grade peer benchmarking assessment with traffic light indicators show
 ### Peer Analysis - Alternative View
 Simplified peer benchmarking layout optimized for presentation and export.
 
-![Peer Benchmarking - Alternative](docs/UI/Screenshot%202025-09-30%20at%201.12.35%20PM.png)
+![Peer Benchmarking - Alternative](docs/UI/Screenshot%202025-09-30%20at%201.12.35%E2%80%AFPM.png)
 
 **Features shown:**
 - Clean three-column layout (Lever | Current Design | Peer Average | Assessment)
