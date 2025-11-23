@@ -1,10 +1,10 @@
-# PlanWise Design Matrix
+# Fidelity PlanAlign Studio
 
 An internal intelligence platform that transforms unstructured retirement plan documents into structured data for automated peer analysis, recommendation generation, and client deliverable creation for 850+ tax-exempt DC clients.
 
 ## Overview
 
-The PlanWise Design Matrix is the data foundation and analytical engine for retirement plan consulting. It extracts plan design features from documents, maintains a queryable database of plan provisions, and generates peer benchmarking insights to drive advisory conversations.
+The Fidelity PlanAlign Studio is the data foundation and analytical engine for retirement plan consulting. It extracts plan design features from documents, maintains a queryable database of plan provisions, and generates peer benchmarking insights to drive advisory conversations.
 
 **Key Value Proposition:** Enable data-driven retirement plan consulting at scale by automating plan data extraction, peer comparisons, and recommendation generation.
 

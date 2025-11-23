@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { EditFieldModal } from './EditFieldModal'
+import { getFieldConfig } from '../utils/fieldConfig'
 
 interface ExtractedField {
   field_name: string
@@ -22,8 +23,11 @@ interface FieldUpdate {
   updated_by: string
 }
 
-export default function PlanDesignMatrix({ clientId, clientName }: Props) {
+export default function PlanDesignMatrix({ clientId }: Props) {
   const [editingField, setEditingField] = useState<ExtractedField | null>(null)
+  const [editingInline, setEditingInline] = useState<string | null>(null) // field_name being edited inline
+  const [inlineValue, setInlineValue] = useState<string>('')
+  const [isSaving, setIsSaving] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: extractions, isLoading } = useQuery<ExtractedField[]>({
@@ -46,7 +50,10 @@ export default function PlanDesignMatrix({ clientId, clientName }: Props) {
           body: JSON.stringify(update),
         }
       )
-      if (!response.ok) throw new Error('Failed to update field')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail?.message || errorData.detail || 'Failed to update field');
+      }
       return response.json()
     },
     onSuccess: () => {
@@ -63,139 +70,242 @@ export default function PlanDesignMatrix({ clientId, clientName }: Props) {
     })
   }
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'verified') {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-green/10 text-success-green">
-          ✓ Verified
-        </span>
-      )
+  // Inline editing handlers
+  const startInlineEdit = (field: ExtractedField) => {
+    setEditingInline(field.field_name)
+    // Format the current value for editing
+    let displayValue = field.value?.toString() || ''
+    const numValue = typeof field.value === 'string' ? parseFloat(field.value) : field.value
+    if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 0 && numValue <= 1 &&
+      (field.field_name.toLowerCase().includes('rate') || field.field_name.toLowerCase().includes('cap'))) {
+      displayValue = `${Math.round(numValue * 100)}%`
     }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-danger-red/10 text-danger-red">
-          ⚠ Review
-        </span>
-    )
+    setInlineValue(displayValue)
   }
 
-  const getConfidenceBar = (score: number) => {
-    const percentage = Math.round(score * 100)
-    let colorClass = 'bg-success-green'
-    if (percentage < 70) colorClass = 'bg-danger-red'
-    else if (percentage < 88) colorClass = 'bg-warning-yellow'
-
-    return (
-      <div className="flex items-center space-x-2">
-        <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div
-            className={`h-full ${colorClass} transition-all duration-300`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-        <span className="text-xs font-medium text-gray-600 w-10">{percentage}%</span>
-      </div>
-    )
+  const cancelInlineEdit = () => {
+    setEditingInline(null)
+    setInlineValue('')
   }
 
-  const verifiedCount = extractions?.filter(e => e.status === 'verified').length || 0
-  const reviewCount = extractions?.filter(e => e.status === 'review').length || 0
+  const saveInlineEdit = async (fieldName: string, newValue: string) => {
+    setIsSaving(true)
+    try {
+      // Convert percentage strings back to decimals if needed
+      let valueToSend = newValue
+      if (typeof newValue === 'string' && newValue.endsWith('%')) {
+        const percentValue = parseFloat(newValue.replace('%', ''))
+        valueToSend = (percentValue / 100).toString()
+      }
+
+      await updateFieldMutation.mutateAsync({
+        fieldName,
+        update: {
+          new_value: valueToSend,
+          reason: '',
+          updated_by: 'user@planwise.com',
+        },
+      })
+      setEditingInline(null)
+      setInlineValue('')
+    } catch (error) {
+      console.error('Failed to save inline edit:', error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Group extractions by category
+  const groupedExtractions = extractions?.reduce((acc, field) => {
+    const category = field.field_category || 'Other'
+    if (!acc[category]) acc[category] = []
+    acc[category].push(field)
+    return acc
+  }, {} as Record<string, ExtractedField[]>) || {}
+
+  const categories = Object.keys(groupedExtractions).sort()
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="text-xl">📊</span>
-          <h2 className="text-lg font-semibold text-gray-900">Plan Design Matrix</h2>
+    <div className="space-y-6">
+      {/* Header Card */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Plan Design Matrix</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          {extractions?.length || 0} data points
+        </p>
+      </div>
+
+      {/* Content */}
+      {isLoading ? (
+        <div className="p-12 text-center text-gray-500 bg-white rounded-lg border border-gray-200">
+          Loading plan data...
         </div>
-        <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50">
-          ⚙️ Configure
-        </button>
-      </div>
+      ) : !extractions || extractions.length === 0 ? (
+        <div className="p-12 text-center text-gray-500 bg-white rounded-lg border border-gray-200">
+          No plan data available
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {categories.map((category) => (
+            <div key={category} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                  {category}
+                </h3>
+                <span className="text-xs text-gray-500 font-medium">
+                  {groupedExtractions[category].length} fields
+                </span>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {groupedExtractions[category].map((field, idx) => {
+                  // Check if this field should be disabled based on dependencies
+                  const isAutoEnrollmentRate = field.field_name === 'Auto-Enrollment Rate'
+                  const autoEnrollmentField = extractions?.find(f => f.field_name === 'Auto-Enrollment')
+                  const isAutoEnrollmentEnabled = autoEnrollmentField?.value === true || autoEnrollmentField?.value === 'true'
 
-      {/* Table */}
-      <div className="overflow-x-auto">
-        {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading plan data...</div>
-        ) : !extractions || extractions.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No plan data available</div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Feature
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Value
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Confidence
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {extractions.map((field, idx) => (
-                <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {field.field_name}
-                      </div>
-                      <div className="text-xs text-gray-500 capitalize">
-                        {field.field_category}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {typeof field.value === 'boolean'
-                        ? (field.value ? 'Yes' : 'No')
-                        : field.value || '—'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="w-32">
-                      {getConfidenceBar(field.confidence_score)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(field.status)}
-                      <button
-                        onClick={() => setEditingField(field)}
-                        className="text-xs text-primary-blue hover:underline font-medium"
-                      >
-                        {field.status === 'review' ? 'Review' : 'Edit'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                  const isAutoEscalationRate = field.field_name === 'Auto-Escalation Rate'
+                  const isAutoEscalationCap = field.field_name === 'Auto-Escalation Cap'
+                  const autoEscalationField = extractions?.find(f => f.field_name === 'Auto-Escalation')
+                  const isAutoEscalationEnabled = autoEscalationField?.value === true || autoEscalationField?.value === 'true'
 
-      {/* Footer */}
-      {extractions && extractions.length > 0 && (
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center space-x-6 text-sm">
-            <span className="text-success-green font-medium">
-              ✓ {verifiedCount} features validated
-            </span>
-            {reviewCount > 0 && (
-              <span className="text-warning-yellow font-medium">
-                ⚠ {reviewCount} requires review
-              </span>
-            )}
-          </div>
-          <button className="px-4 py-2 text-sm font-medium text-primary-blue border border-primary-blue rounded-md hover:bg-primary-blue hover:text-white transition-colors">
-            Export Data
-          </button>
+                  const isFieldDisabled =
+                    (isAutoEnrollmentRate && !isAutoEnrollmentEnabled) ||
+                    ((isAutoEscalationRate || isAutoEscalationCap) && !isAutoEscalationEnabled)
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`group px-6 py-4 hover:bg-blue-50/50 transition-colors flex items-center justify-between ${isFieldDisabled ? 'opacity-50' : ''
+                        }`}
+                    >
+                      <div className="flex-1 min-w-0 pr-8">
+                        <div className="text-sm font-medium text-gray-900 mb-1">
+                          {field.field_name}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {editingInline === field.field_name ? (
+                            // INLINE EDITING MODE
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const config = getFieldConfig(field.field_name)
+
+                                if (config.type === 'boolean') {
+                                  // Toggle for boolean
+                                  return (
+                                    <select
+                                      value={inlineValue}
+                                      onChange={(e) => {
+                                        saveInlineEdit(field.field_name, e.target.value)
+                                      }}
+                                      onBlur={cancelInlineEdit}
+                                      autoFocus
+                                      className="text-sm border border-primary-blue rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                                    >
+                                      <option value="true">Yes</option>
+                                      <option value="false">No</option>
+                                    </select>
+                                  )
+                                } else if (config.type === 'enum' && config.options) {
+                                  // Dropdown for enum
+                                  return (
+                                    <select
+                                      value={inlineValue}
+                                      onChange={(e) => {
+                                        saveInlineEdit(field.field_name, e.target.value)
+                                      }}
+                                      onBlur={cancelInlineEdit}
+                                      autoFocus
+                                      className="text-sm border border-primary-blue rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-blue"
+                                    >
+                                      {config.options.map((opt) => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                      ))}
+                                    </select>
+                                  )
+                                } else {
+                                  // Text input for everything else
+                                  return (
+                                    <input
+                                      type="text"
+                                      value={inlineValue}
+                                      onChange={(e) => setInlineValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          saveInlineEdit(field.field_name, inlineValue)
+                                        } else if (e.key === 'Escape') {
+                                          cancelInlineEdit()
+                                        }
+                                      }}
+                                      onBlur={() => saveInlineEdit(field.field_name, inlineValue)}
+                                      autoFocus
+                                      className="text-sm border border-primary-blue rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-blue w-48"
+                                    />
+                                  )
+                                }
+                              })()}
+                              {isSaving && <span className="text-xs text-gray-500">Saving...</span>}
+                            </div>
+                          ) : (
+                            // DISPLAY MODE
+                            <>
+                              <div
+                                className={`text-sm text-gray-600 flex items-center gap-2 ${isFieldDisabled ? 'cursor-not-allowed' : 'cursor-pointer hover:text-primary-blue'
+                                  }`}
+                                onClick={() => !isFieldDisabled && startInlineEdit(field)}
+                                title={
+                                  isFieldDisabled
+                                    ? isAutoEnrollmentRate
+                                      ? 'Enable Auto-Enrollment first'
+                                      : 'Enable Auto-Escalation first'
+                                    : 'Click to edit'
+                                }
+                              >
+                                {isFieldDisabled ? (
+                                  <span className="text-gray-400 italic">N/A</span>
+                                ) : typeof field.value === 'boolean' ? (
+                                  field.value ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      Yes
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                      No
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="font-mono text-gray-800">
+                                    {(() => {
+                                      // Format decimal percentages (0.03 -> 3%)
+                                      const numValue = typeof field.value === 'string' ? parseFloat(field.value) : field.value;
+                                      if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 0 && numValue <= 1 &&
+                                        (field.field_name.toLowerCase().includes('rate') ||
+                                          field.field_name.toLowerCase().includes('cap'))) {
+                                        return `${Math.round(numValue * 100)}%`;
+                                      }
+                                      return field.value || '—';
+                                    })()}
+                                  </span>
+                                )}
+                              </div>
+                              {!isFieldDisabled && (
+                                <button
+                                  onClick={() => setEditingField(field)}
+                                  className="text-xs text-gray-400 hover:text-primary-blue font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Open full editor"
+                                >
+                                  <span>⋯</span>
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

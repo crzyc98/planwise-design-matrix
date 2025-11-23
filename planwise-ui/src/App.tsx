@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Dashboard from './pages/Dashboard'
 import ConsultingViews from './pages/ConsultingViews'
+import AuditLogViewer from './components/AuditLogViewer'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -13,7 +14,7 @@ const queryClient = new QueryClient({
 })
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'consulting'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'consulting' | 'audit-log'>('dashboard');
   const [selectedClientId, setSelectedClientId] = useState<string>('CLI_001');
   const [selectedClientName, setSelectedClientName] = useState<string>('');
 
@@ -26,8 +27,18 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       {currentView === 'dashboard' ? (
-        <Dashboard onViewConsulting={handleViewConsulting} />
-      ) : (
+        <>
+          <div className="absolute top-4 right-4 z-50">
+            <button
+              onClick={() => setCurrentView('audit-log')}
+              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 shadow-sm"
+            >
+              📋 View Audit Log
+            </button>
+          </div>
+          <Dashboard onViewConsulting={handleViewConsulting} />
+        </>
+      ) : currentView === 'consulting' ? (
         <div>
           <button
             onClick={() => setCurrentView('dashboard')}
@@ -48,6 +59,20 @@ function App() {
             ← Back to Dashboard
           </button>
           <ConsultingViews clientId={selectedClientId} clientName={selectedClientName} />
+        </div>
+      ) : (
+        <div className="min-h-screen bg-gray-50 p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6">
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className="flex items-center text-gray-600 hover:text-gray-900"
+              >
+                <span className="mr-2">←</span> Back to Dashboard
+              </button>
+            </div>
+            <AuditLogViewer />
+          </div>
         </div>
       )}
     </QueryClientProvider>

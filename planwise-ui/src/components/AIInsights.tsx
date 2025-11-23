@@ -1,8 +1,4 @@
-interface Props {
-  clientId: string
-}
-
-export default function AIInsights({ clientId }: Props) {
+export default function AIInsights() {
   const insights = [
     { type: 'success', message: '12 plan features extracted' },
     { type: 'success', message: 'Vesting schedule validated' },

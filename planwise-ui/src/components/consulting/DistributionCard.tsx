@@ -42,8 +42,8 @@ export default function DistributionCard({ series, height = 280 }: DistributionC
     series.clientValue == null
       ? -1
       : series.bins.findIndex(
-          (b) => series.clientValue! >= b.binStart && series.clientValue! < b.binEnd
-        );
+        (b) => series.clientValue! >= b.binStart && series.clientValue! < b.binEnd
+      );
 
   const markerData = clientIdx >= 0 ? data[clientIdx] : null;
 
@@ -126,8 +126,6 @@ export default function DistributionCard({ series, height = 280 }: DistributionC
                 fill="#059669"
                 stroke="#ffffff"
                 strokeWidth={2}
-                isFront
-                shape="diamond"
                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}
               />
             )}

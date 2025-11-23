@@ -1,8 +1,4 @@
-interface Props {
-  clientId: string
-}
-
-export default function Recommendations({ clientId }: Props) {
+export default function Recommendations() {
   const recommendations = [
     {
       title: 'Consider increasing match',
@@ -29,11 +25,10 @@ export default function Recommendations({ clientId }: Props) {
         {recommendations.map((rec, idx) => (
           <div
             key={idx}
-            className={`p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow ${
-              rec.type === 'opportunity'
-                ? 'border-warning-yellow/30 bg-warning-yellow/5'
-                : 'border-success-green/30 bg-success-green/5'
-            }`}
+            className={`p-3 rounded-lg border-2 cursor-pointer hover:shadow-md transition-shadow ${rec.type === 'opportunity'
+              ? 'border-warning-yellow/30 bg-warning-yellow/5'
+              : 'border-success-green/30 bg-success-green/5'
+              }`}
           >
             <div className="font-medium text-gray-900 text-sm mb-1">
               {rec.title}

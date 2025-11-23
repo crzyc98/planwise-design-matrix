@@ -1,8 +1,4 @@
-interface Props {
-  clientId: string
-}
-
-export default function DocumentUpload({ clientId }: Props) {
+export default function DocumentUpload() {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="px-4 py-3 border-b border-gray-200">

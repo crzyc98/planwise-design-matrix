@@ -2,10 +2,6 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import ClientSelector from '../components/ClientSelector'
 import PlanDesignMatrix from '../components/PlanDesignMatrix'
-import PeerBenchmark from '../components/PeerBenchmark'
-import DocumentUpload from '../components/DocumentUpload'
-import AIInsights from '../components/AIInsights'
-import Recommendations from '../components/Recommendations'
 
 interface Client {
   client_id: string
@@ -33,15 +29,20 @@ export default function Dashboard({ onViewConsulting }: DashboardProps) {
     },
   })
 
+  // Set default client when clients are loaded
+  if (clients && clients.length > 0 && selectedClientId === 'CLI_001') {
+    setSelectedClientId(clients[0].client_id)
+  }
+
   // Fetch selected client data
-  const { data: clientData } = useQuery({
+  useQuery({
     queryKey: ['client', selectedClientId],
     queryFn: async () => {
       const response = await fetch(`/api/v1/clients/${selectedClientId}`)
       if (!response.ok) throw new Error('Failed to fetch client')
       return response.json()
     },
-    enabled: !!selectedClientId,
+    enabled: !!selectedClientId && selectedClientId !== 'CLI_001',
   })
 
   const selectedClient = clients?.find(c => c.client_id === selectedClientId)
@@ -55,11 +56,11 @@ export default function Dashboard({ onViewConsulting }: DashboardProps) {
             <div className="flex items-center space-x-8">
               <div className="flex items-center">
                 <div className="bg-primary-blue text-white font-bold px-3 py-2 rounded">
-                  PW
+                  FP
                 </div>
                 <div className="ml-3">
                   <h1 className="text-lg font-semibold text-gray-900">
-                    PlanWise Design Matrix
+                    Fidelity PlanAlign Studio
                   </h1>
                   <p className="text-xs text-gray-500">Enterprise Retirement Plan Analysis</p>
                 </div>
@@ -93,27 +94,9 @@ export default function Dashboard({ onViewConsulting }: DashboardProps) {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Column - Document Upload & AI Insights */}
-          <div className="col-span-3 space-y-6">
-            <DocumentUpload clientId={selectedClientId} />
-            <AIInsights clientId={selectedClientId} />
-          </div>
-
-          {/* Center Column - Plan Design Matrix */}
-          <div className="col-span-6">
-            <PlanDesignMatrix
-              clientId={selectedClientId}
-              clientName={selectedClient?.client_name}
-            />
-          </div>
-
-          {/* Right Column - Peer Benchmark & Recommendations */}
-          <div className="col-span-3 space-y-6">
-            <PeerBenchmark clientId={selectedClientId} />
-            <Recommendations clientId={selectedClientId} />
-          </div>
+      <main className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <PlanDesignMatrix clientId={selectedClientId} />
         </div>
       </main>
     </div>

@@ -48,9 +48,9 @@ function ConsultingViews({ clientId, clientName }: ConsultingViewsProps) {
 
       {/* Tab Content */}
       <div className="tab-content">
-        {activeTab === 'overview' && <PeerAssessmentTable clientId={clientId} clientName={clientName} />}
-        {activeTab === 'scorecard' && <NavigatorScorecard clientId={clientId} clientName={clientName} />}
-        {activeTab === 'distributions' && <DistributionCharts clientId={clientId} clientName={clientName} />}
+        {activeTab === 'overview' && <PeerAssessmentTable clientId={clientId} />}
+        {activeTab === 'scorecard' && <NavigatorScorecard clientId={clientId} />}
+        {activeTab === 'distributions' && <DistributionCharts clientId={clientId} />}
       </div>
     </div>
   );

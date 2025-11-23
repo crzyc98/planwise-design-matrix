@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PowerPoint Generator for PlanWise Design Matrix
+PowerPoint Generator for Fidelity PlanAlign Studio
 Creates peer comparison presentation decks
 """
 

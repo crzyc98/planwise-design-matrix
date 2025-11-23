@@ -14,7 +14,7 @@ app = FastAPI(title="PlanWise Design Matrix API", version="1.0.0")
 # CORS configuration for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # Vite default ports
+    allow_origins=["*"],  # Allow all origins for local development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -164,6 +164,7 @@ def get_extractions(client_id: str):
             "auto_enrollment_enabled": ("auto_features", "Auto-Enrollment", 0.96),
             "auto_enrollment_rate": ("auto_features", "Auto-Enrollment Rate", 0.96),
             "auto_escalation_enabled": ("auto_features", "Auto-Escalation", 0.94),
+            "auto_escalation_rate": ("auto_features", "Auto-Escalation Rate", 0.92),
             "auto_escalation_cap": ("auto_features", "Auto-Escalation Cap", 0.90),
         }
 
@@ -686,6 +687,7 @@ FIELD_NAME_MAP = {
     'Auto-Enrollment': 'auto_enrollment_enabled',
     'Auto-Enrollment Rate': 'auto_enrollment_rate',
     'Auto-Escalation': 'auto_escalation_enabled',
+    'Auto-Escalation Rate': 'auto_escalation_rate',
     'Auto-Escalation Cap': 'auto_escalation_cap',
 }
 
@@ -701,7 +703,7 @@ def map_field_name(field_name: str) -> str:
 
 class FieldUpdate(BaseModel):
     new_value: str
-    reason: str
+    reason: Optional[str] = None
     notes: Optional[str] = None
     updated_by: str
 
@@ -795,6 +797,7 @@ async def update_field(client_id: str, field_name: str, update: FieldUpdate):
         old_value = str(old_value_row[0]) if old_value_row[0] is not None else None
 
         # Update the field
+
         conn.execute(
             f"""
             UPDATE plan_designs
@@ -807,19 +810,26 @@ async def update_field(client_id: str, field_name: str, update: FieldUpdate):
         )
 
         # Create audit log entry
-        audit_id = f"audit-{uuid.uuid4()}"
-        conn.execute("""
-            INSERT INTO audit_log
-            (id, client_id, field_name, old_value, new_value, change_type, reason, notes, updated_by, updated_at)
-            VALUES (?, ?, ?, ?, ?, 'update', ?, ?, ?, CURRENT_TIMESTAMP)
-        """, [audit_id, client_id, db_field_name, old_value, update.new_value, update.reason, update.notes, update.updated_by])
+        audit_id = str(uuid.uuid4())
+        conn.execute(
+            """
+            INSERT INTO audit_log (
+                id, client_id, field_name, old_value, new_value,
+                change_type, reason, notes, updated_by, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            [
+                audit_id, client_id, db_field_name, old_value, update.new_value,
+                'update', update.reason or 'manual_update', update.notes, update.updated_by
+            ]
+        )
 
+        # Return updated field
         return {
             "client_id": client_id,
             "field_name": field_name,
             "old_value": old_value,
             "new_value": update.new_value,
-            "updated_at": datetime.now().isoformat(),
             "updated_by": update.updated_by,
             "audit_log_id": audit_id
         }
@@ -827,6 +837,50 @@ async def update_field(client_id: str, field_name: str, update: FieldUpdate):
     finally:
         conn.close()
 
+@app.get("/api/v1/audit-log", response_model=List[AuditLogEntry])
+def get_audit_log(limit: int = 50):
+    """Get global audit log history"""
+    conn = duckdb.connect(str(DB_PATH), read_only=True)
+    try:
+        # Check if audit_log table exists
+        table_exists = conn.execute(
+            "SELECT count(*) FROM information_schema.tables WHERE table_name = 'audit_log'"
+        ).fetchone()[0] > 0
+
+        if not table_exists:
+            return []
+
+        query = """
+            SELECT
+                id,
+                CAST(updated_at AS VARCHAR) as timestamp,
+                old_value,
+                new_value,
+                updated_by,
+                reason,
+                notes
+            FROM audit_log
+            ORDER BY updated_at DESC
+            LIMIT ?
+        """
+        result = conn.execute(query, [limit]).fetchall()
+
+        log_entries = []
+        for row in result:
+            log_entries.append(AuditLogEntry(
+                id=row[0],
+                timestamp=row[1],
+                old_value=row[2],
+                new_value=row[3],
+                updated_by=row[4],
+                reason=row[5],
+                notes=row[6]
+            ))
+
+        return log_entries
+
+    finally:
+        conn.close()
 @app.put("/api/v1/clients/{client_id}")
 async def bulk_update_fields(client_id: str, updates: BulkUpdate):
     """Update multiple fields in single transaction"""

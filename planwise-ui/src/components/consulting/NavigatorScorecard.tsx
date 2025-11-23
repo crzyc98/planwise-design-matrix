@@ -33,10 +33,9 @@ interface NavigatorScorecardData {
 
 interface NavigatorScorecardProps {
   clientId: string;
-  clientName: string;
 }
 
-function NavigatorScorecard({ clientId, clientName }: NavigatorScorecardProps) {
+function NavigatorScorecard({ clientId }: NavigatorScorecardProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['navigator-scorecard', clientId],
     queryFn: async () => {

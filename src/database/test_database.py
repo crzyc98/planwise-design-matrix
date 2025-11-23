@@ -77,25 +77,13 @@ def test_sample_queries(db_path: str = 'data/planwise.db'):
     # Query 1: Basic SELECT
     print("\n>>> Sample Plans:")
     sample = conn.execute("""
-        SELECT plan_id, client_name, plan_type, industry, employee_count
+        SELECT client_id, client_name, industry, employee_count
         FROM plan_designs
         LIMIT 5
     """).fetchdf()
     print(sample.to_string(index=False))
 
-    # Query 2: Group by plan_type
-    print("\n>>> Plans by Type:")
-    by_type = conn.execute("""
-        SELECT
-            plan_type,
-            COUNT(*) as count
-        FROM plan_designs
-        GROUP BY plan_type
-        ORDER BY count DESC
-    """).fetchdf()
-    print(by_type.to_string(index=False))
-
-    # Query 3: Group by industry
+    # Query 2: Group by industry
     print("\n>>> Plans by Industry:")
     by_industry = conn.execute("""
         SELECT
@@ -122,7 +110,7 @@ def test_peer_cohort_query(db_path: str = 'data/planwise.db'):
 
     # Get first plan as target
     target = conn.execute("""
-        SELECT plan_id, client_name, plan_type, industry, employee_count
+        SELECT client_id, client_name, industry, employee_count
         FROM plan_designs
         LIMIT 1
     """).fetchone()
@@ -132,12 +120,11 @@ def test_peer_cohort_query(db_path: str = 'data/planwise.db'):
         conn.close()
         return False
 
-    plan_id, client_name, plan_type, industry, employee_count = target
+    client_id, client_name, industry, employee_count = target
 
     print(f"\n>>> Target Plan:")
-    print(f"    Plan ID: {plan_id}")
+    print(f"    Client ID: {client_id}")
     print(f"    Client: {client_name}")
-    print(f"    Type: {plan_type}")
     print(f"    Industry: {industry}")
     print(f"    Employees: {employee_count:,}")
 
@@ -146,25 +133,23 @@ def test_peer_cohort_query(db_path: str = 'data/planwise.db'):
     max_employees = int(employee_count * 1.5)
 
     print(f"\n>>> Peer Cohort Criteria:")
-    print(f"    Plan Type: {plan_type}")
     print(f"    Industry: {industry}")
     print(f"    Employee Range: {min_employees:,} - {max_employees:,}")
 
     # Find peers
     peers = conn.execute("""
         SELECT
-            plan_id,
+            client_id,
             client_name,
             employee_count,
             CASE WHEN match_formula IS NOT NULL THEN '✓' ELSE '✗' END as has_match,
             CASE WHEN auto_enrollment_enabled THEN '✓' ELSE '✗' END as has_auto_enrollment
         FROM plan_designs
-        WHERE plan_id != ?
-          AND plan_type = ?
+        WHERE client_id != ?
           AND industry = ?
           AND employee_count BETWEEN ? AND ?
         ORDER BY employee_count
-    """, [plan_id, plan_type, industry, min_employees, max_employees]).fetchdf()
+    """, [client_id, industry, min_employees, max_employees]).fetchdf()
 
     print(f"\n>>> Peer Plans Found: {len(peers)}")
     if len(peers) > 0:

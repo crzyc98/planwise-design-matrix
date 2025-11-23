@@ -18,7 +18,6 @@ interface PeerAssessmentData {
 
 interface PeerAssessmentTableProps {
   clientId: string;
-  clientName: string;
 }
 
 // Badge component for status indicators
@@ -38,7 +37,7 @@ const StatusBadge = ({ status }: { status: 'above' | 'median' | 'below' }) => {
   );
 };
 
-function PeerAssessmentTable({ clientId, clientName }: PeerAssessmentTableProps) {
+function PeerAssessmentTable({ clientId }: PeerAssessmentTableProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['peer-assessment', clientId],
     queryFn: async () => {
@@ -78,7 +77,7 @@ function PeerAssessmentTable({ clientId, clientName }: PeerAssessmentTableProps)
         </div>
 
         {/* Body Rows */}
-        {data?.features.map((feature, index) => (
+        {data?.features.map((feature) => (
           <div key={feature.lever} className="assessment-clean-row">
             {/* Lever */}
             <div className="col-lever-clean">

@@ -18,13 +18,13 @@ import duckdb
 
 # Page configuration
 st.set_page_config(
-    page_title="PlanWise Design Matrix",
+    page_title="Fidelity PlanAlign Studio",
     page_icon="📊",
     layout="wide"
 )
 
 # Title
-st.title("📊 PlanWise Design Matrix")
+st.title("📊 Fidelity PlanAlign Studio")
 st.markdown("### Peer Benchmarking Dashboard")
 st.markdown("---")
 
@@ -358,4 +358,4 @@ with col1:
 with col2:
     st.caption(f"🔄 Last Updated: {target.get('last_updated', 'N/A')}" if 'target' in locals() else "")
 with col3:
-    st.caption("🏢 PlanWise Design Matrix v1.0")
+    st.caption("🏢 Fidelity PlanAlign Studio v1.0")

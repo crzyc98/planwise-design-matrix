@@ -22,12 +22,11 @@ interface DistributionSeries {
 
 interface DistributionChartsProps {
   clientId: string;
-  clientName: string;
 }
 
 type CohortScope = 'regional' | 'national';
 
-function DistributionCharts({ clientId, clientName }: DistributionChartsProps) {
+function DistributionCharts({ clientId }: DistributionChartsProps) {
   const [cohortScope, setCohortScope] = useState<CohortScope>('national');
 
   // Fetch all four distribution charts
