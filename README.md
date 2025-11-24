@@ -1,176 +1,185 @@
 # Fidelity PlanAlign Studio
 
-An internal intelligence platform that transforms unstructured retirement plan documents into structured data for automated peer analysis, recommendation generation, and client deliverable creation for 850+ tax-exempt DC clients.
+A streamlined web application for managing and editing 401(k) retirement plan design data with an intuitive, professional interface.
 
 ## Overview
 
-The Fidelity PlanAlign Studio is the data foundation and analytical engine for retirement plan consulting. It extracts plan design features from documents, maintains a queryable database of plan provisions, and generates peer benchmarking insights to drive advisory conversations.
-
-**Key Value Proposition:** Enable data-driven retirement plan consulting at scale by automating plan data extraction, peer comparisons, and recommendation generation.
-
-## UI Previews
-
-### Main Dashboard
-The primary interface for viewing and analyzing individual retirement plan designs with extracted data, peer benchmarking, and automated recommendations.
-
-![Main Dashboard](docs/UI/Screenshot%202025-09-29%20at%202.46.28%E2%80%AFPM.png)
-
-**Features shown:**
-- Document upload panel with AI extraction status
-- Plan Design Matrix table with confidence scores
-- Peer benchmark cards showing industry comparisons
-- AI insights and automated recommendations
-- Data validation workflow
-
-### Peer Analysis - Overview Tab
-Consulting-grade peer benchmarking assessment with traffic light indicators showing how the client compares to their peer cohort.
-
-![Peer Benchmarking Assessment](docs/UI/Screenshot%202025-09-30%20at%209.32.39%E2%80%AFAM.png)
-
-**Features shown:**
-- Five-lever comparison framework (Eligibility, Auto-Enrollment, Auto-Escalation, Employer Contribution, Vesting)
-- Traffic light indicators (▲ green = above peers, ● orange = at median, ▼ red = below peers)
-- Structured assessment text for each feature
-- Peer cohort statistics with n-size
-
-### Peer Analysis - Alternative View
-Simplified peer benchmarking layout optimized for presentation and export.
-
-![Peer Benchmarking - Alternative](docs/UI/Screenshot%202025-09-30%20at%201.12.35%E2%80%AFPM.png)
-
-**Features shown:**
-- Clean three-column layout (Lever | Current Design | Peer Average | Assessment)
-- Visual indicators with highlighted status boxes
-- Healthcare cohort comparison (n=19)
+Fidelity PlanAlign Studio is a data management tool designed for retirement plan administrators and consultants to efficiently view and update plan design parameters across multiple clients. The application provides a clean, modern interface focused on rapid data entry and editing with smart field dependencies and auto-save functionality.
 
 ## Key Features
 
-### 1. Document Intelligence Engine
-- Extract plan design features from Form 5500, SPDs, and plan documents
-- Hybrid approach: Rules-based patterns + Azure Form Recognizer + Human validation
-- Confidence scoring and quality assurance workflows
-- Target: 95%+ accuracy after human validation
+### 🚀 Inline Editing
+- Click any field value to edit in place
+- Auto-save on change - no modal dialogs for quick updates
+- Keyboard shortcuts (Enter to save, Esc to cancel)
+- Instant visual feedback during saves
 
-### 2. Plan Data Maintenance
-- Direct editing of plan data with validation rules
-- Complete audit trail (who, what, when, why)
-- Field-level change history
-- Excel import/export functionality
+### 🔗 Smart Field Dependencies
+- Auto-Enrollment Rate automatically disabled when Auto-Enrollment is "No"
+- Auto-Escalation Rate and Cap automatically disabled when Auto-Escalation is "No"
+- Fields show "N/A" when dependencies aren't met
+- Contextual tooltips guide users
 
-### 3. Peer Benchmarking System
-- Statistical analysis with k-anonymity (n ≥ 20)
-- Cohort construction by industry, size, and plan characteristics
-- Percentile rankings and gap analysis
-- Traffic light indicators for client positioning
+### 📊 Organized Data Display
+- Fields grouped by category (Eligibility, Contributions, Vesting, Auto Features)
+- Clean card-based layout
+- Professional visual hierarchy
+- Responsive design
 
-### 4. Deliverable Generation
-- PowerPoint presentations with approved templates
-- Peer comparison reports
-- Recommendation summaries
-- Compliance-ready disclaimers and data citations
+### 🎯 User-Friendly Inputs
+- Percentage fields display as human-readable values (e.g., "3%" instead of "0.03")
+- Dropdowns for enums and boolean fields
+- Input validation with clear error messages
+- Smart conversion between display and storage formats
+
+### 📝 Optional Audit Trail
+- "Reason for Change" field is optional for faster workflows
+- Full edit history tracked in the backend
+- Audit logs maintain compliance
+
+## Planned Features
+
+### 📊 Regional Benchmarking
+- Select a client to view how their plan design compares to regional peers
+- Statistical analysis by geographic region.  This should be based on clients in the same industry that are in the same immediate region where they would compete with each other for talent. 
+- Side-by-side comparison of key metrics:
+  - Auto-Enrollment rates
+  - Auto-Escalation parameters
+  - Employer match formulas
+  - Vesting schedules
+- Visual indicators showing client positioning vs. regional medians
+- Cohort size and statistical significance displayed for transparency
 
 ## Technology Stack
 
-- **Backend:** FastAPI, Python 3.9+
-- **Database:** DuckDB for analytics
-- **ML/AI:** Transformers, PyTorch, spaCy, NLTK
-- **Document Processing:** PyMuPDF, pytesseract, python-docx
-- **Data Science:** pandas, numpy, scipy, scikit-learn
-- **Deliverables:** python-pptx for PowerPoint generation
-- **Task Queue:** Celery with Redis
-- **Frontend:** React, TypeScript, TanStack Query, Tailwind CSS
-- **Testing:** pytest, pytest-asyncio
+### Frontend
+- **React** with TypeScript
+- **Vite** for fast development and builds
+- **TanStack Query** for data fetching and caching
+- **Tailwind CSS** for styling
+
+### Backend
+- **FastAPI** (Python) for REST API
+- **DuckDB** for embedded database
+- **Pydantic** for data validation
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.9+
+- Virtual environment (venv)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd planwise-design-matrix
+   ```
+
+2. **Backend Setup**
+   ```bash
+   cd backend
+   python3 -m venv ../venv
+   source ../venv/bin/activate  # On Windows: ..\venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Frontend Setup**
+   ```bash
+   cd planwise-ui
+   npm install
+   ```
+
+### Running the Application
+
+1. **Start the Backend Server**
+   ```bash
+   cd backend
+   source ../venv/bin/activate
+   uvicorn main:app --reload --port 8000
+   ```
+
+2. **Start the Frontend Dev Server**
+   ```bash
+   cd planwise-ui
+   npm run dev
+   ```
+
+3. **Access the Application**
+   - Frontend: http://localhost:3004
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+## Usage
+
+1. **Select a Client** from the dropdown in the header
+2. **View Plan Data** organized by category in the Plan Design Matrix
+3. **Edit Fields** by clicking directly on any value
+4. **Use Dropdowns** for boolean and enum fields (auto-saves on selection)
+5. **Type and Save** for text/number fields (Enter to save, Esc to cancel)
+6. **Access Full Editor** via the "⋯" button on hover for detailed edits with notes
+
+## Field Configuration
+
+### Auto-Enrollment
+- **Auto-Enrollment**: Yes/No
+- **Auto-Enrollment Rate**: 1%-10% (disabled if Auto-Enrollment is No)
+
+### Auto-Escalation
+- **Auto-Escalation**: Yes/No
+- **Auto-Escalation Rate**: 0.5%, 1%, 1.5%, 2%, 2.5%, 3%, 3.5%, 4% (disabled if Auto-Escalation is No)
+- **Auto-Escalation Cap**: 4%-15% (disabled if Auto-Escalation is No)
+
+### Other Fields
+- Eligibility
+- Employer Match
+- Match Effective Rate
+- Non-Elective Contribution
+- Vesting Schedule
+
+## Development
+
+### Build Frontend
+```bash
+cd planwise-ui
+npm run build
+```
+
+### Run Tests
+```bash
+cd backend
+pytest
+```
+
+### Database Migrations
+Database schema changes are managed through migration scripts in the `backend/` directory.
 
 ## Project Structure
 
 ```
-/
-├── backend/                 # FastAPI backend services
-├── planwise-ui/            # React frontend application
-├── docs/                   # Documentation and PRD
-│   ├── epics/             # Feature epics and specifications
-│   │   ├── completed/     # Finished epics
-│   │   ├── active/        # In-progress epics
-│   │   └── planned/       # Future epics
-│   └── UI/                # UI mockups and screenshots
-├── requirements.txt        # Python dependencies
-├── venv/                  # Virtual environment (excluded from git)
-└── .claude/               # Claude Code settings
+planwise-design-matrix/
+├── backend/
+│   ├── main.py                 # FastAPI application
+│   ├── requirements.txt        # Python dependencies
+│   └── migrations/             # Database migration scripts
+├── planwise-ui/
+│   ├── src/
+│   │   ├── components/         # React components
+│   │   ├── pages/              # Page components
+│   │   └── utils/              # Utilities and configs
+│   ├── package.json
+│   └── vite.config.ts
+├── data/
+│   └── planwise.db            # DuckDB database
+└── README.md
 ```
-
-## Development Setup
-
-### Python Virtual Environment
-
-```bash
-# Activate virtual environment
-source venv/bin/activate  # macOS/Linux
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Development Commands
-
-```bash
-# Code formatting
-black .
-isort .
-
-# Linting
-flake8 .
-
-# Type checking
-mypy .
-
-# Testing
-pytest
-pytest --cov=. --cov-report=html
-
-# Development server
-uvicorn main:app --reload
-```
-
-## Key Epics
-
-### ✅ Completed
-- **E01: Document Intelligence Engine** - Core extraction pipeline with hybrid approach
-- **E04: Plan Data Maintenance & Editing** - Data quality and editing capabilities
-
-### 🔄 Planned
-- **E02: Plan Analysis Dashboard** - Interactive plan viewing and analysis
-- **E03: Peer Analysis & Consulting Views** - Professional deliverable generation
-- **E05: Inline Editing Core** - Enhanced data editing UX
-- **E06: Keyboard Navigation** - Power user keyboard shortcuts
-- **E07: Command Palette & Bulk Operations** - Advanced productivity features
-- **E08: UX Polish & Validation** - Refinement and quality improvements
-
-## Integration Points
-
-- **PlanWise Navigator:** Export baseline and recommendation YAMLs for modeling
-- **Aurora/FHI Framework:** Consistent terminology and metrics mapping
-
-## Security & Compliance
-
-- Plan design data classified as "Confidential – Client" (no PII)
-- AES-256 encryption at rest, TLS 1.3 in transit
-- Role-based access control (RBAC)
-- 7-year audit trail retention
-- Annual data refresh cycle with staleness indicators
-
-## Performance Requirements
-
-- Peer query latency: p95 ≤ 1.5s; p99 ≤ 3.0s
-- Deck generation: ≤ 8 min p95
-- Extraction accuracy: ≥ 92% on Tier-1 fields; ≥ 88% on Tier-2
-- System availability: 99.5% during business hours
-
-## Documentation
-
-- **PRD:** See `docs/PRD v1.0.md` for comprehensive product requirements
-- **Epics:** See `docs/epics/` for detailed feature specifications
-- **Claude Context:** See `CLAUDE.md` for AI assistant instructions
 
 ## License
 
-Internal Fidelity Investments project. Not for external distribution.
+[Add your license information here]
+
+## Support
+
+For questions or issues, please contact [your contact information].

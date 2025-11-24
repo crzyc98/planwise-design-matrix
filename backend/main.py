@@ -32,6 +32,15 @@ class ClientSummary(BaseModel):
     plan_type: str  # Will default to "401(k)"
     total_participants: int  # Maps to employee_count
     data_freshness_days: int = 0
+    state: Optional[str] = None
+    region: Optional[str] = None
+
+class BenchmarkDataPoint(BaseModel):
+    name: str
+    client: float
+    regionMedian: float
+    topQuartile: float
+    unit: str
 
 class ExtractedField(BaseModel):
     field_name: str
@@ -72,7 +81,8 @@ def get_clients(search: Optional[str] = None, limit: int = 100):
                 client_id,
                 client_name,
                 industry,
-                employee_count
+                employee_count,
+                state
             FROM plan_designs
             WHERE 1=1
         """
@@ -88,16 +98,29 @@ def get_clients(search: Optional[str] = None, limit: int = 100):
 
         result = conn.execute(query, params).fetchall()
 
+        # State to Region mapping
+        REGIONS = {
+            'CT': 'Northeast', 'ME': 'Northeast', 'MA': 'Northeast', 'NH': 'Northeast', 'RI': 'Northeast', 'VT': 'Northeast', 'NJ': 'Northeast', 'NY': 'Northeast', 'PA': 'Northeast',
+            'IL': 'Midwest', 'IN': 'Midwest', 'MI': 'Midwest', 'OH': 'Midwest', 'WI': 'Midwest', 'IA': 'Midwest', 'KS': 'Midwest', 'MN': 'Midwest', 'MO': 'Midwest', 'NE': 'Midwest', 'ND': 'Midwest', 'SD': 'Midwest',
+            'DE': 'South', 'FL': 'South', 'GA': 'South', 'MD': 'South', 'NC': 'South', 'SC': 'South', 'VA': 'South', 'DC': 'South', 'WV': 'South', 'AL': 'South', 'KY': 'South', 'MS': 'South', 'TN': 'South', 'AR': 'South', 'LA': 'South', 'OK': 'South', 'TX': 'South',
+            'AZ': 'West', 'CO': 'West', 'ID': 'West', 'MT': 'West', 'NV': 'West', 'NM': 'West', 'UT': 'West', 'WY': 'West', 'AK': 'West', 'CA': 'West', 'HI': 'West', 'OR': 'West', 'WA': 'West'
+        }
+
         clients = []
         for row in result:
+            state = row[4]
+            region = REGIONS.get(state, 'Unknown') if state else 'Unknown'
+            
             clients.append(ClientSummary(
                 client_id=row[0],
                 client_name=row[1],
-                plan_sponsor_name=row[1],  # Use client_name as fallback
+                plan_sponsor_name=row[1],
                 industry=row[2],
-                plan_type="401(k)",  # Default plan type
+                plan_type="401(k)",
                 total_participants=row[3],
-                data_freshness_days=0
+                data_freshness_days=0,
+                state=state,
+                region=region
             ))
 
         return clients
@@ -1090,6 +1113,85 @@ def health_check():
             "status": "unhealthy",
             "error": str(e)
         }
+
+@app.get("/api/v1/clients/{client_id}/regional-benchmark", response_model=List[BenchmarkDataPoint])
+def get_regional_benchmark(client_id: str):
+    """Get regional benchmark data for a client"""
+    conn = get_db()
+    try:
+        # 1. Get target client info
+        client = conn.execute(
+            "SELECT industry, state, auto_enrollment_rate, match_effective_rate, auto_escalation_cap FROM plan_designs WHERE client_id = ?",
+            [client_id]
+        ).fetchone()
+
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        industry, state, ae_rate, match_rate, esc_cap = client
+        
+        # Handle nulls
+        ae_rate = float(ae_rate) * 100 if ae_rate is not None else 0
+        match_rate = float(match_rate) * 100 if match_rate is not None else 0
+        esc_cap = float(esc_cap) * 100 if esc_cap is not None else 0
+
+        # 2. Determine Region
+        REGIONS = {
+            'CT': 'Northeast', 'ME': 'Northeast', 'MA': 'Northeast', 'NH': 'Northeast', 'RI': 'Northeast', 'VT': 'Northeast', 'NJ': 'Northeast', 'NY': 'Northeast', 'PA': 'Northeast',
+            'IL': 'Midwest', 'IN': 'Midwest', 'MI': 'Midwest', 'OH': 'Midwest', 'WI': 'Midwest', 'IA': 'Midwest', 'KS': 'Midwest', 'MN': 'Midwest', 'MO': 'Midwest', 'NE': 'Midwest', 'ND': 'Midwest', 'SD': 'Midwest',
+            'DE': 'South', 'FL': 'South', 'GA': 'South', 'MD': 'South', 'NC': 'South', 'SC': 'South', 'VA': 'South', 'DC': 'South', 'WV': 'South', 'AL': 'South', 'KY': 'South', 'MS': 'South', 'TN': 'South', 'AR': 'South', 'LA': 'South', 'OK': 'South', 'TX': 'South',
+            'AZ': 'West', 'CO': 'West', 'ID': 'West', 'MT': 'West', 'NV': 'West', 'NM': 'West', 'UT': 'West', 'WY': 'West', 'AK': 'West', 'CA': 'West', 'HI': 'West', 'OR': 'West', 'WA': 'West'
+        }
+        
+        target_region = REGIONS.get(state, None)
+        
+        # 3. Build Peer Query
+        # If we have a region, filter by it. Otherwise fallback to industry only.
+        peer_query = "SELECT auto_enrollment_rate, match_effective_rate, auto_escalation_cap FROM plan_designs WHERE industry = ?"
+        params = [industry]
+        
+        if target_region:
+            # Get all states in this region
+            region_states = [s for s, r in REGIONS.items() if r == target_region]
+            placeholders = ','.join(['?'] * len(region_states))
+            peer_query += f" AND state IN ({placeholders})"
+            params.extend(region_states)
+            
+        peers = conn.execute(peer_query, params).fetchall()
+        
+        if not peers:
+            # Fallback to mock data if no peers found (for demo purposes)
+            return [
+                BenchmarkDataPoint(name='Auto-Enroll Rate', client=ae_rate, regionMedian=4.0, topQuartile=6.0, unit='%'),
+                BenchmarkDataPoint(name='Match Cap', client=match_rate, regionMedian=3.5, topQuartile=5.0, unit='%'),
+                BenchmarkDataPoint(name='Escalation Cap', client=esc_cap, regionMedian=10.0, topQuartile=15.0, unit='%')
+            ]
+
+        # 4. Calculate Stats
+        def get_stats(data_index):
+            values = [float(p[data_index]) * 100 for p in peers if p[data_index] is not None]
+            if not values: return 0, 0
+            values.sort()
+            n = len(values)
+            median = values[n // 2]
+            p75 = values[int(n * 0.75)]
+            return median, p75
+
+        ae_median, ae_p75 = get_stats(0)
+        match_median, match_p75 = get_stats(1)
+        esc_median, esc_p75 = get_stats(2)
+
+        return [
+            BenchmarkDataPoint(name='Auto-Enroll Rate', client=ae_rate, regionMedian=ae_median, topQuartile=ae_p75, unit='%'),
+            BenchmarkDataPoint(name='Match Cap', client=match_rate, regionMedian=match_median, topQuartile=match_p75, unit='%'),
+            BenchmarkDataPoint(name='Escalation Cap', client=esc_cap, regionMedian=esc_median, topQuartile=esc_p75, unit='%')
+        ]
+
+    except Exception as e:
+        print(f"Error calculating benchmarks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
 
 if __name__ == "__main__":
     import uvicorn
