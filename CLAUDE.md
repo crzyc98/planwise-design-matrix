@@ -4,7 +4,16 @@
 The PlanWise Design Matrix is an internal intelligence platform that transforms unstructured retirement plan documents into structured data for automated peer analysis, recommendation generation, and client deliverable creation for 850+ tax-exempt DC clients.
 
 ## Key Technologies
-- **Backend:** FastAPI, Python 3.9+
+
+### Frontend (PlanAlign Studio)
+- **Framework:** React 18+ with TypeScript
+- **Build Tool:** Vite
+- **State Management:** TanStack Query + Zustand
+- **Styling:** Tailwind CSS
+- **Charts:** Recharts
+
+### Backend
+- **API:** FastAPI, Python 3.9+
 - **Database:** DuckDB for analytics
 - **ML/AI:** Transformers, PyTorch, spaCy, NLTK
 - **Document Processing:** PyMuPDF, pytesseract, python-docx
@@ -16,14 +25,46 @@ The PlanWise Design Matrix is an internal intelligence platform that transforms 
 ## Project Structure
 ```
 /
-├── docs/                 # Documentation and PRD
-├── requirements.txt      # Python dependencies
-├── venv/                # Virtual environment (excluded from git)
-└── .claude/             # Claude Code settings
+├── backend/              # FastAPI Python application
+│   ├── main.py           # API entry point
+│   └── requirements.txt  # Backend dependencies
+├── planalign-ui/         # PlanAlign Studio (primary React frontend)
+│   ├── src/api/          # API client
+│   ├── src/components/   # React components
+│   └── package.json      # Frontend dependencies
+├── planwise-ui/          # Legacy UI (deprecated)
+├── data/                 # DuckDB database files
+├── docs/                 # Documentation
+│   ├── PRD v1.0.md       # Product Requirements Document
+│   ├── PlanAlign_Studio_UI_Specification.md  # UI/UX Spec
+│   └── epics/            # Feature specifications
+├── venv/                 # Virtual environment (excluded from git)
+└── .claude/              # Claude Code settings
 ```
 
 ## Development Commands
-When working on this project, use these commands for quality assurance:
+
+### Launching the Application
+
+**Terminal 1 - Backend:**
+```bash
+source venv/bin/activate
+cd backend
+uvicorn main:app --reload --port 8002
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd planalign-ui
+npm run dev
+```
+
+**Access:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8002
+- API Docs: http://localhost:8002/docs
+
+### Quality Assurance
 
 ```bash
 # Code formatting
@@ -39,9 +80,6 @@ mypy .
 # Testing
 pytest
 pytest --cov=. --cov-report=html
-
-# Development server
-uvicorn main:app --reload
 ```
 
 ## Key Features
@@ -69,8 +107,14 @@ uvicorn main:app --reload
 - Extraction accuracy: ≥ 92% on Tier-1 fields; ≥ 88% on Tier-2
 - System availability: 99.5% during business hours
 
+## Key Documentation
+- **PRD:** `docs/PRD v1.0.md` - Product requirements and feature specifications
+- **UI/UX Spec:** `docs/PlanAlign_Studio_UI_Specification.md` - Complete UI specification with mockups, user flows, and technical implementation details
+- **Epics:** `docs/epics/` - Feature-level specifications
+
 ## Development Notes
 - Follow the comprehensive PRD in `docs/PRD v1.0.md`
+- UI implementation should follow `docs/PlanAlign_Studio_UI_Specification.md`
 - All statistical comparisons must maintain k-anonymity (minimum 20 peers)
 - Use confidence scoring for all extractions
 - Implement immutable audit trails for compliance

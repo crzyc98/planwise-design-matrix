@@ -63,54 +63,73 @@ Fidelity PlanAlign Studio is a data management tool designed for retirement plan
 - **DuckDB** for embedded database
 - **Pydantic** for data validation
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm
 - Python 3.9+
-- Virtual environment (venv)
 
-### Installation
+### One-Time Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd planwise-design-matrix
-   ```
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd planwise-design-matrix
 
-2. **Backend Setup**
-   ```bash
-   cd backend
-   python3 -m venv ../venv
-   source ../venv/bin/activate  # On Windows: ..\venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+# 2. Create and activate Python virtual environment
+python3 -m venv venv
+source venv/bin/activate  # macOS/Linux
+# venv\Scripts\activate   # Windows
 
-3. **Frontend Setup**
-   ```bash
-   cd planwise-ui
-   npm install
-   ```
+# 3. Install backend dependencies
+pip install -r backend/requirements.txt
 
-### Running the Application
+# 4. Install dependencies
+npm install                      # Root (includes concurrently)
+npm install --prefix planalign-ui # Frontend
+```
 
-1. **Start the Backend Server**
-   ```bash
-   cd backend
-   source ../venv/bin/activate
-   uvicorn main:app --reload --port 8000
-   ```
+---
 
-2. **Start the Frontend Dev Server**
-   ```bash
-   cd planwise-ui
-   npm run dev
-   ```
+## Launching the Application
 
-3. **Access the Application**
-   - Frontend: http://localhost:3004
-   - Backend API: http://localhost:8000
-   - API Docs: http://localhost:8000/docs
+```bash
+# Activate virtual environment
+source venv/bin/activate  # macOS/Linux
+# venv\Scripts\activate   # Windows
+
+# Start both backend and frontend
+npm run dev
+```
+
+You'll see color-coded output from both services:
+```
+[api] INFO:     Uvicorn running on http://127.0.0.1:8002
+[ui]  VITE v5.x.x  ready in XXX ms
+[ui]  ➜  Local:   http://localhost:3000/
+```
+
+### Run Services Individually
+
+```bash
+npm run backend   # Just the API
+npm run frontend  # Just the UI
+```
+
+### Access the Application
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | http://localhost:3000 | PlanAlign Studio UI |
+| **Backend API** | http://localhost:8002 | FastAPI REST API |
+| **API Docs** | http://localhost:8002/docs | Interactive Swagger docs |
+| **API Docs (Alt)** | http://localhost:8002/redoc | ReDoc documentation |
+
+---
+
+## Stopping the Application
+
+Press `Ctrl+C` to stop both servers.
 
 ## Usage
 
@@ -143,7 +162,7 @@ Fidelity PlanAlign Studio is a data management tool designed for retirement plan
 
 ### Build Frontend
 ```bash
-cd planwise-ui
+cd planalign-ui
 npm run build
 ```
 
@@ -164,15 +183,21 @@ planwise-design-matrix/
 │   ├── main.py                 # FastAPI application
 │   ├── requirements.txt        # Python dependencies
 │   └── migrations/             # Database migration scripts
-├── planwise-ui/
+├── planalign-ui/               # PlanAlign Studio (primary UI)
 │   ├── src/
+│   │   ├── api/                # API client and hooks
 │   │   ├── components/         # React components
-│   │   ├── pages/              # Page components
 │   │   └── utils/              # Utilities and configs
 │   ├── package.json
 │   └── vite.config.ts
+├── planwise-ui/                # Legacy UI (deprecated)
 ├── data/
-│   └── planwise.db            # DuckDB database
+│   └── planwise.db             # DuckDB database
+├── docs/
+│   ├── PRD v1.0.md             # Product Requirements Document
+│   ├── PlanAlign_Studio_UI_Specification.md  # UI/UX Specification
+│   └── epics/                  # Feature epic specifications
+├── venv/                       # Python virtual environment (git-ignored)
 └── README.md
 ```
 

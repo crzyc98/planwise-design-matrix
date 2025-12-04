@@ -22,20 +22,16 @@ Open a **new** terminal tab/window and run:
 
 ```bash
 # From the project root
-cd planwise-ui
+cd new-ui
 npm run dev
 ```
 
-The UI will be available at `http://localhost:5173` (or the port shown in the terminal).
+The UI will be available at `http://localhost:3000` (or the port shown in the terminal).
 
 ### 3. Verification Steps
 
-1.  **Open the App**: Go to `http://localhost:5173` in your browser.
-2.  **View Audit Log**: Click the "📋 View Audit Log" button in the top right corner. You should see the history of changes.
-3.  **Inline Editing**:
-    *   Go back to the Dashboard.
-    *   Scroll down to the "Plan Design Matrix" table.
-    *   **Double-click** on any value cell (e.g., "Auto-Enrollment Rate").
-    *   Change the value in the modal and click "Save".
-    *   Verify the value updates in the table.
-    *   Go to the Audit Log again to see your change recorded.
+1.  **Open the App**: Go to `http://localhost:3000` in your browser.
+2.  **Check Tabs**: Verify you see "Plan Design", "Strategic Assessment", and "Client Roster" tabs.
+3.  **Plan Design**: Ensure the Plan Matrix loads with data.
+4.  **Strategic Assessment**: Click the tab and verify the assessment component loads.
+5.  **Client Roster**: Click the tab and verify the client list loads.
